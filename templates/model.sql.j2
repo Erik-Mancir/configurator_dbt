@@ -1,0 +1,5 @@
+{{ config(materialized='table') }}
+
+SELECT
+    *
+FROM {{ source('{{ source_schema }}', '{{ source_table }}') }}

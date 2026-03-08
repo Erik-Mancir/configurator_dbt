@@ -1,0 +1,25 @@
+-- Gold Layer Model (Business-Ready Analytics)
+-- This layer contains aggregated, business-aligned transformations
+
+{{ config(
+    materialized='table',
+    schema='gold'
+) }}
+
+WITH silver_data AS (
+    SELECT
+        *
+    FROM {{ ref('{{ source_table }}_silver') }}
+),
+
+business_logic AS (
+    SELECT
+        *
+    FROM silver_data
+    WHERE 1=1
+        -- Add business logic and aggregations here
+)
+
+SELECT
+    *
+FROM business_logic

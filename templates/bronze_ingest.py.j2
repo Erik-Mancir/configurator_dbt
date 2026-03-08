@@ -1,0 +1,60 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import to_timestamp, current_timestamp
+
+def ingest_to_bronze(spark, source_type, source_path, destination_table, database='bronze'):
+    """
+    Ingest data from various sources to Bronze layer.
+    
+    Args:
+        spark: SparkSession object
+        source_type: Type of source ('{{ source_type }}') - e.g., 'csv', 'parquet', 'database'
+        source_path: Path or connection string to source ('{{ source_path }}')
+        destination_table: Destination table name in Bronze layer ('{{ destination_table }}')
+        database: Bronze database name (default: 'bronze')
+    """
+    
+    try:
+        # Read from source based on type
+        if source_type.lower() == 'csv':
+            df = spark.read.option("header", "true").option("inferSchema", "true").csv(source_path)
+        
+        elif source_type.lower() == 'parquet':
+            df = spark.read.parquet(source_path)
+        
+        elif source_type.lower() == 'database':
+            # For database sources, adjust connection parameters as needed
+            df = spark.read \
+                .format("jdbc") \
+                .option("url", source_path) \
+                .option("dbtable", "{{ source_table }}") \
+                .load()
+        
+        else:
+            raise ValueError(f"Unsupported source type: {source_type}")
+        
+        # Add ingestion metadata
+        df_with_metadata = df.withColumn("_ingestion_timestamp", current_timestamp()) \
+                            .withColumn("_source_system", "{{ source_system }}")
+        
+        # Write to Bronze layer with overwrite mode
+        df_with_metadata.write \
+            .mode("overwrite") \
+            .option("path", f"/mnt/bronze/{database}/{destination_table}") \
+            .saveAsTable(f"{database}.{destination_table}")
+        
+        print(f"Successfully ingested data to {database}.{destination_table}")
+        return True
+        
+    except Exception as e:
+        print(f"Error during ingestion: {str(e)}")
+        return False
+
+if __name__ == "__main__":
+    spark = SparkSession.builder.appName("BronzeIngestion").getOrCreate()
+    
+    ingest_to_bronze(
+        spark=spark,
+        source_type='{{ source_type }}',
+        source_path='{{ source_path }}',
+        destination_table='{{ destination_table }}'
+    )

@@ -1,0 +1,26 @@
+-- Silver Layer Model (Cleansing & Standardization)
+-- This layer performs data quality checks, deduplication, and standardization
+
+{{ config(
+    materialized='table',
+    schema='silver'
+) }}
+
+WITH source_data AS (
+    SELECT
+        *
+    FROM {{ source('{{ source_schema }}', '{{ source_table }}') }}
+),
+
+cleaned_data AS (
+    SELECT
+        *
+    FROM source_data
+    WHERE 1=1
+        -- Add data quality checks here
+        -- AND some_column IS NOT NULL
+)
+
+SELECT
+    *
+FROM cleaned_data
