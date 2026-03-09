@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: {{ source_schema }}
+    description: "{{ source_schema }} layer data sources"
+    database: "{{ database | default('your_database') }}"
+    schema: "{{ source_schema }}"
+    tables:
+      - name: {{ source_table }}
+        description: "Source table for {{ result_table_name }}"

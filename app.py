@@ -1,11 +1,31 @@
 import streamlit as st
-from utils.dbt_generator import generate_dbt_model, generate_bronze_ingest
+from utils.dbt_generator import (
+    generate_dbt_model, 
+    generate_bronze_ingest, 
+    generate_sources_yml, 
+    generate_schema_yml, 
+    save_to_dbt_project
+)
+import os
 
 st.set_page_config(page_title="DBT Model Configurator", layout="wide")
 
 st.title("🏗️ ELT Configurator - Medallion Architecture")
 
 st.markdown("Configure your ELT pipeline with Bronze (ingestion), Silver (cleansing), and Gold (business logic) layers.")
+
+# DBT Project Configuration
+st.sidebar.header("DBT Project Settings")
+dbt_project_path = st.sidebar.text_input(
+    "DBT Project Path", 
+    placeholder="e.g., /path/to/your/dbt/project",
+    help="Optional: Path to your dbt project root. If provided, files will be saved directly to the project."
+)
+
+if dbt_project_path and not os.path.exists(dbt_project_path):
+    st.sidebar.error("DBT project path does not exist!")
+elif dbt_project_path and not os.path.exists(os.path.join(dbt_project_path, 'dbt_project.yml')):
+    st.sidebar.warning("Path exists but doesn't appear to be a dbt project (no dbt_project.yml found).")
 
 # Main tabs for different layers
 tab1, tab2, tab3 = st.tabs(["🥉 Bronze (Ingestion)", "🥈 Silver (DBT)", "🥇 Gold (DBT)"])
@@ -33,13 +53,20 @@ with tab1:
             st.success("PySpark Ingestion Script Generated!")
             st.code(script_content, language='python')
             
-            st.download_button(
-                label="Download PySpark Script",
-                data=script_content,
-                file_name=f"ingest_{destination_table_bronze}.py",
-                mime="text/plain",
-                key="download_bronze"
-            )
+            if dbt_project_path:
+                scripts_dir = os.path.join(dbt_project_path, 'scripts')
+                script_path = os.path.join(scripts_dir, f"ingest_{destination_table_bronze}.py")
+                from utils.dbt_generator import save_generated_file
+                save_generated_file(script_content, script_path)
+                st.info(f"Script saved to: {script_path}")
+            else:
+                st.download_button(
+                    label="Download PySpark Script",
+                    data=script_content,
+                    file_name=f"ingest_{destination_table_bronze}.py",
+                    mime="text/plain",
+                    key="download_bronze"
+                )
         else:
             st.error("Please fill in all Bronze layer fields.")
 
@@ -60,16 +87,41 @@ with tab2:
     if st.button("Generate Silver DBT Model", key="btn_silver"):
         if all([source_schema_silver, source_table_silver, result_table_silver]):
             sql_content = generate_dbt_model(source_schema_silver, source_table_silver, result_table_silver, layer='silver')
+            sources_yml = generate_sources_yml(source_schema_silver, source_table_silver, result_table_silver)
+            schema_yml = generate_schema_yml(result_table_silver, 'silver')
+            
             st.success("Silver Layer DBT Model Generated!")
             st.code(sql_content, language='sql')
             
-            st.download_button(
-                label="Download Silver SQL",
-                data=sql_content,
-                file_name=f"{result_table_silver}.sql",
-                mime="text/plain",
-                key="download_silver"
-            )
+            if dbt_project_path:
+                save_to_dbt_project(dbt_project_path, 'silver', sql_content, result_table_silver, sources_yml, schema_yml)
+                st.info(f"Files saved to dbt project: models/silver/{result_table_silver}.sql, sources.yml updated, schema.yml updated")
+            else:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.download_button(
+                        label="Download Silver SQL",
+                        data=sql_content,
+                        file_name=f"{result_table_silver}.sql",
+                        mime="text/plain",
+                        key="download_silver_sql"
+                    )
+                with col2:
+                    st.download_button(
+                        label="Download Sources YAML",
+                        data=sources_yml,
+                        file_name="sources.yml",
+                        mime="text/plain",
+                        key="download_silver_sources"
+                    )
+                with col3:
+                    st.download_button(
+                        label="Download Schema YAML",
+                        data=schema_yml,
+                        file_name=f"{result_table_silver}.yml",
+                        mime="text/plain",
+                        key="download_silver_schema"
+                    )
         else:
             st.error("Please fill in all Silver layer fields.")
 
@@ -89,15 +141,31 @@ with tab3:
     if st.button("Generate Gold DBT Model", key="btn_gold"):
         if source_table_gold and result_table_gold:
             sql_content = generate_dbt_model('silver', source_table_gold, result_table_gold, layer='gold')
+            schema_yml = generate_schema_yml(result_table_gold, 'gold')
+            
             st.success("Gold Layer DBT Model Generated!")
             st.code(sql_content, language='sql')
             
-            st.download_button(
-                label="Download Gold SQL",
-                data=sql_content,
-                file_name=f"{result_table_gold}.sql",
-                mime="text/plain",
-                key="download_gold"
-            )
+            if dbt_project_path:
+                save_to_dbt_project(dbt_project_path, 'gold', sql_content, result_table_gold, None, schema_yml)
+                st.info(f"Files saved to dbt project: models/gold/{result_table_gold}.sql, schema.yml updated")
+            else:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.download_button(
+                        label="Download Gold SQL",
+                        data=sql_content,
+                        file_name=f"{result_table_gold}.sql",
+                        mime="text/plain",
+                        key="download_gold_sql"
+                    )
+                with col2:
+                    st.download_button(
+                        label="Download Schema YAML",
+                        data=schema_yml,
+                        file_name=f"{result_table_gold}.yml",
+                        mime="text/plain",
+                        key="download_gold_schema"
+                    )
         else:
             st.error("Please fill in all Gold layer fields.")

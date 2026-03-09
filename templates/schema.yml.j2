@@ -1,0 +1,8 @@
+version: 2
+
+models:
+  - name: {{ result_table_name }}
+    description: "{{ layer | capitalize }} layer model for {{ result_table_name }}"
+    columns:
+      - name: "*"  # Placeholder for all columns
+        description: "All columns from source"
