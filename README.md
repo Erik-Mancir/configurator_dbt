@@ -1,8 +1,8 @@
-# DBT Model Configurator - Medallion Architecture
+# DBT Medallion Configurator - VS Code Extension
 
-A Streamlit app for configuring and generating ELT pipeline components across Bronze, Silver, and Gold layers using PySpark and DBT.
+A VS Code extension for configuring and generating ELT pipeline components across Bronze, Silver, and Gold layers using PySpark and DBT.
 
-## Architecture
+## Medallion Architecture
 
 ```
 Bronze (Raw) ──PySpark───> Silver (Cleansed) ──DBT───> Gold (Analytics)
@@ -14,22 +14,28 @@ Bronze (Raw) ──PySpark───> Silver (Cleansed) ──DBT───> Gold 
 
 ## Features
 
-### DBT Project Integration
-- **Direct Project Connection**: Connect to an existing dbt project and save generated files automatically
-- **YAML File Management**: Automatically updates existing `sources.yml` and `schema.yml` files or creates them if they don't exist
-- **Organized Structure**: Files are saved in appropriate `models/{layer}/` directories
-- **Non-destructive Updates**: New sources and models are appended to existing YAML files without overwriting
+### Project Management
+- **Auto-Detection**: Automatically detects DBT projects in your workspace
+- **File Picker**: Browse and select your DBT project (no manual path entry)
+- **Project Validation**: Instantly validates `dbt_project.yml` structure
+- **Persistent Context**: Remembers your selected project across sessions
+
+### File Generation
+- **Direct File Creation**: Generated files save directly to your project
+- **Smart YAML Merging**: Automatically updates `sources.yml` and `schema.yml` without overwriting
+- **Layer Organization**: Files saved in appropriate `models/{layer}/` directories
+- **Auto-Open**: Generated files open in editor for immediate review
 
 ### Bronze Layer
 - Configure PySpark ingestion from CSV, Parquet, database, or API sources
 - Automatic metadata tracking (ingestion timestamp, source system)
-- Generate ready-to-use PySpark scripts
+- Generate ready-to-use PySpark scripts to `scripts/` directory
 
 ### Silver Layer
 - Generate DBT models for data quality and standardization
 - Built-in placeholders for data quality checks
-- Organized cleansing workflows
 - Automatic source and schema YAML generation
+- Organized cleansing workflows
 
 ### Gold Layer
 - Generate DBT models for business logic and analytics
@@ -37,88 +43,76 @@ Bronze (Raw) ──PySpark───> Silver (Cleansed) ──DBT───> Gold 
 - Aggregation and transformation ready templates
 - Schema YAML generation for documentation
 
-## Setup
+## Quick Start
 
-1. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-2. Run the app:
-   ```
-   streamlit run app.py
+1. **Install the extension**
+   ```bash
+   cd extension
+   npm install
+   npm run compile
    ```
 
-3. Open the provided URL in your browser (typically `http://localhost:8501`).
+2. **Open in VS Code** with your DBT project as a workspace folder
 
-## Usage
+3. **Open the extension**: Click 🏗️ in the sidebar or use `Ctrl+Shift+P`
 
-### DBT Project Setup (Optional)
-For direct integration with your dbt project:
+4. **Select your DBT project**: Command Palette → "Select DBT Project"
 
-1. In the sidebar, enter the path to your dbt project root (e.g., `/path/to/your/dbt/project`)
-2. The app will validate that the path exists and contains a `dbt_project.yml` file
-3. Generated files will be automatically saved to the appropriate directories
+5. **Generate models**: Fill the form for Bronze/Silver/Gold layer and click Generate
 
-If no path is provided, files can be downloaded manually.
+## Commands
 
-### Configuring Bronze (Ingestion)
-
-1. Select the **Bronze** tab
-2. Enter source system name (e.g., ERP, CRM)
-3. Choose source type: CSV, Parquet, Database, or API
-4. Provide source path/connection string
-5. Specify source and destination table names
-6. Click "Generate Bronze Ingest Script"
-7. If dbt project path is set, script saves to `scripts/` directory; otherwise download manually
-
-### Configuring Silver (DBT)
-
-1. Select the **Silver** tab
-2. Enter the source schema/database (e.g., bronze)
-3. Specify the source table name (e.g., raw_customers)
-4. Provide the result table name (e.g., customers_silver)
-5. Click "Generate Silver DBT Model"
-6. If dbt project path is set, files save to `models/silver/` directory:
-   - `{result_table}.sql` - The DBT model
-   - `sources.yml` - Updated with new source definitions
-   - `schema.yml` - Updated with new model documentation
-7. Otherwise, download the SQL, sources YAML, and schema YAML files manually
-
-### Configuring Gold (DBT)
-
-1. Select the **Gold** tab
-2. Specify the Silver table to build from (e.g., customers_silver)
-3. Provide the result table name (e.g., dim_customers)
-4. Click "Generate Gold DBT Model"
-5. If dbt project path is set, files save to `models/gold/` directory:
-   - `{result_table}.sql` - The DBT model
-   - `schema.yml` - Updated with new model documentation
-6. Otherwise, download the SQL and schema YAML files manually
+- `DBT Configurator: Select DBT Project Folder` - Browse for your DBT project
+- `DBT Configurator: Configure Bronze Layer` - Open Bronze ingestion form (Ctrl+Shift+Alt+B)
+- `DBT Configurator: Configure Silver Layer` - Open Silver cleansing form
+- `DBT Configurator: Configure Gold Layer` - Open Gold analytics form
+- `DBT Configurator: Open Configuration Panel` - Show main panel
+- `DBT Configurator: Show Current Project` - Display selected project
 
 ## Project Structure
 
 ```
 configurator_dbt/
-├── app.py                          # Main Streamlit application
-├── requirements.txt                # Python dependencies
-├── README.md                       # This file
+├── extension/                      # VS Code extension
+│   ├── src/
+│   │   ├── extension.ts           # Main entry point
+│   │   ├── dbtProjectManager.ts   # Project management
+│   │   └── ui/
+│   │       └── configuratorPanel.ts # Webview UI
+│   ├── package.json               # Extension manifest
+│   ├── tsconfig.json              # TypeScript config
+│   └── README.md                  # Extension documentation
+├── utils/
+│   └── dbt_generator.py           # Template rendering logic
 ├── templates/
 │   ├── bronze_ingest.py.j2        # PySpark ingestion template
 │   ├── silver.sql.j2              # Silver layer DBT template
 │   ├── gold.sql.j2                # Gold layer DBT template
 │   ├── sources.yml.j2             # DBT sources YAML template
 │   └── schema.yml.j2              # DBT schema YAML template
-└── utils/
-    └── dbt_generator.py           # Template rendering and file saving logic
+├── requirements.txt               # Python dependencies
+└── ARCHITECTURE.md                # Medallion architecture overview
 ```
+
+## Documentation
+
+- **[extension/README.md](./extension/README.md)** - Complete extension documentation
+- **[extension/QUICKSTART.md](./extension/QUICKSTART.md)** - 5-minute setup guide
+- **[extension/PYTHON_INTEGRATION.md](./extension/PYTHON_INTEGRATION.md)** - Python backend details
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Medallion architecture overview
+
+## Requirements
+
+- VS Code 1.85+
+- Node.js 16+ (for building the extension)
+- Python 3.8+ (for template rendering)
+- Existing DBT project
 
 ## Future Enhancements
 
-- Column mapping and transformation specifications
-- Data quality rule builder UI
-- dbt documentation and test generation
-- Advanced PySpark options (partitioning, bucketing, etc.)
-- Integration with dbt Cloud/Core APIs
-- Automated dbt run and test execution
-- Support for incremental loads and CDC patterns
+- Syntax highlighting for generated SQL
+- Template customization UI
+- DBT test generation helper
+- Project initialization from template
+- Integration with dbt Cloud API
+- Linting and validation warnings

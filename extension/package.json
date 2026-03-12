@@ -1,0 +1,111 @@
+{
+    "name": "dbt-configurator",
+    "displayName": "DBT Medallion Configurator",
+    "description": "Configure and generate ELT pipeline components across Bronze, Silver, and Gold layers using DBT",
+    "version": "1.0.0",
+    "author": "Data Engineering Team",
+    "publisher": "your-org",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Data Science",
+        "Programming Languages",
+        "Other"
+    ],
+    "keywords": [
+        "dbt",
+        "ELT",
+        "medallion",
+        "bronze",
+        "silver",
+        "gold"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "dbtConfigurator.selectDbtProject",
+                "title": "DBT Configurator: Select DBT Project Folder"
+            },
+            {
+                "command": "dbtConfigurator.openBronzeConfigurator",
+                "title": "DBT Configurator: Configure Bronze Layer (Ingestion)"
+            },
+            {
+                "command": "dbtConfigurator.openSilverConfigurator",
+                "title": "DBT Configurator: Configure Silver Layer (Cleansing)"
+            },
+            {
+                "command": "dbtConfigurator.openGoldConfigurator",
+                "title": "DBT Configurator: Configure Gold Layer (Analytics)"
+            },
+            {
+                "command": "dbtConfigurator.showConfiguratorPanel",
+                "title": "DBT Configurator: Open Configuration Panel"
+            },
+            {
+                "command": "dbtConfigurator.getCurrentProject",
+                "title": "DBT Configurator: Show Current Project"
+            }
+        ],
+        "viewsContainers": {
+            "sidebar": [
+                {
+                    "id": "dbtConfiguratorView",
+                    "title": "DBT Configurator",
+                    "icon": "$(layers)"
+                }
+            ]
+        },
+        "views": {
+            "dbtConfiguratorView": [
+                {
+                    "id": "dbtConfiguratorPanel",
+                    "name": "ELT Configurator",
+                    "type": "webview"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "dbtConfigurator.openBronzeConfigurator",
+                "key": "ctrl+shift+alt+b",
+                "mac": "cmd+shift+alt+b"
+            }
+        ],
+        "configuration": {
+            "title": "DBT Configurator",
+            "properties": {
+                "dbtConfigurator.projectPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to the DBT project folder",
+                    "scope": "resource"
+                },
+                "dbtConfigurator.autoDetectProject": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically detect DBT project from workspace folders",
+                    "scope": "resource"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run esbuild-base -- --minify",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+        "esbuild": "npm run esbuild-base -- --sourcemap",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "test": "node ./out/test/runTest.js",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.85.0",
+        "esbuild": "^0.20.0",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {}
+}
