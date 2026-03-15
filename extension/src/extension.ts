@@ -55,8 +55,10 @@ export function activate(context: vscode.ExtensionContext) {
         'dbtConfigurator.showConfiguratorPanel',
         async () => {
             if (!configuratorPanel) {
-                configuratorPanel = new ConfiguratorPanel(context, dbtProjectManager);
-                configuratorPanel.show();
+                configuratorPanel = ConfiguratorPanel.createOrShow(
+                    context.extensionUri,
+                    dbtProjectManager
+                );
             } else {
                 configuratorPanel.reveal();
             }
@@ -78,11 +80,14 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            if (!configuratorPanel) {
-                configuratorPanel = new ConfiguratorPanel(context, dbtProjectManager);
-                configuratorPanel.show();
-            }
-            configuratorPanel.showLayer('bronze');
+            const panel =
+                configuratorPanel ??
+                ConfiguratorPanel.createOrShow(
+                    context.extensionUri,
+                    dbtProjectManager
+                );
+            configuratorPanel = panel;
+            panel.showLayer('bronze');
         }
     );
 
@@ -101,11 +106,14 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            if (!configuratorPanel) {
-                configuratorPanel = new ConfiguratorPanel(context, dbtProjectManager);
-                configuratorPanel.show();
-            }
-            configuratorPanel.showLayer('silver');
+            const panel =
+                configuratorPanel ??
+                ConfiguratorPanel.createOrShow(
+                    context.extensionUri,
+                    dbtProjectManager
+                );
+            configuratorPanel = panel;
+            panel.showLayer('silver');
         }
     );
 
@@ -124,11 +132,14 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            if (!configuratorPanel) {
-                configuratorPanel = new ConfiguratorPanel(context, dbtProjectManager);
-                configuratorPanel.show();
-            }
-            configuratorPanel.showLayer('gold');
+            const panel =
+                configuratorPanel ??
+                ConfiguratorPanel.createOrShow(
+                    context.extensionUri,
+                    dbtProjectManager
+                );
+            configuratorPanel = panel;
+            panel.showLayer('gold');
         }
     );
 
