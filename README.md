@@ -1,14 +1,14 @@
 # DBT Medallion Configurator - VS Code Extension
 
-A VS Code extension for configuring and generating ELT pipeline components across Bronze, Silver, and Gold layers using PySpark and DBT.
+A VS Code extension for configuring and generating ELT pipeline components across Bronze, Silver, and Gold layers using dlt and DBT.
 
 ## Medallion Architecture
 
 ```
-Bronze (Raw) ──PySpark───> Silver (Cleansed) ──DBT───> Gold (Analytics)
+Bronze (Raw) ──dlt───> Silver (Cleansed) ──DBT───> Gold (Analytics)
 ```
 
-- **Bronze Layer**: Raw data ingestion using PySpark from various sources
+- **Bronze Layer**: Raw data ingestion using dlt from various sources into BigQuery
 - **Silver Layer**: Data cleansing, deduplication, and standardization using DBT
 - **Gold Layer**: Business-ready analytics and aggregations using DBT
 
@@ -27,9 +27,9 @@ Bronze (Raw) ──PySpark───> Silver (Cleansed) ──DBT───> Gold 
 - **Auto-Open**: Generated files open in editor for immediate review
 
 ### Bronze Layer
-- Configure PySpark ingestion from CSV, Parquet, database, or API sources
+- Configure dlt ingestion from CSV, Parquet, JSON, database (e.g., MSSQL), or API sources into BigQuery
 - Automatic metadata tracking (ingestion timestamp, source system)
-- Generate ready-to-use PySpark scripts to `scripts/` directory
+- Generate ready-to-use dlt pipelines to `bronze/pipelines/` directory
 
 ### Silver Layer
 - Generate DBT models for data quality and standardization
@@ -85,7 +85,7 @@ configurator_dbt/
 ├── utils/
 │   └── dbt_generator.py           # Template rendering logic
 ├── templates/
-│   ├── bronze_ingest.py.j2        # PySpark ingestion template
+│   ├── bronze_ingest.py.j2        # dlt ingestion template
 │   ├── silver.sql.j2              # Silver layer DBT template
 │   ├── gold.sql.j2                # Gold layer DBT template
 │   ├── sources.yml.j2             # DBT sources YAML template

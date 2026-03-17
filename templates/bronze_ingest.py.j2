@@ -1,53 +1,66 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import to_timestamp, current_timestamp
+import dlt
+from dlt.destinations import bigquery
+import pandas as pd
+from datetime import datetime
+import requests
+import sqlalchemy as sa
 
-def ingest_to_bronze(spark, source_type, source_path, destination_table, database='bronze'):
+# Configure BigQuery destination (credentials should be set via environment or config)
+pipeline = dlt.pipeline(
+    pipeline_name="{{ pipeline_name }}",
+    destination=bigquery(),
+    dataset_name="bronze"
+)
+
+@dlt.resource(name="{{ destination_table }}", write_disposition="replace")
+def load_bronze_data():
     """
-    Ingest data from various sources to Bronze layer.
-    
-    Args:
-        spark: SparkSession object
-        source_type: Type of source ('{{ source_type }}') - e.g., 'csv', 'parquet', 'database'
-        source_path: Path or connection string to source ('{{ source_path }}')
-        destination_table: Destination table name in Bronze layer ('{{ destination_table }}')
-        database: Bronze database name (default: 'bronze')
+    Load data from {{ source_type }} source to Bronze layer in BigQuery.
+
+    Source: {{ source_path }}
+    Destination: bronze.{{ destination_table }}
     """
-    
     try:
-        # Read from source based on type
-        if source_type.lower() == 'csv':
-            df = spark.read.option("header", "true").option("inferSchema", "true").csv(source_path)
-        
-        elif source_type.lower() == 'parquet':
-            df = spark.read.parquet(source_path)
-        
-        elif source_type.lower() == 'database':
-            # For database sources, adjust connection parameters as needed
-            df = spark.read \
-                .format("jdbc") \
-                .option("url", source_path) \
-                .option("dbtable", "{{ source_table }}") \
-                .load()
-        
+        # Extract data based on source type
+        if "{{ source_type }}".lower() == 'csv':
+            df = pd.read_csv("{{ source_path }}")
+
+        elif "{{ source_type }}".lower() == 'parquet':
+            df = pd.read_parquet("{{ source_path }}")
+
+        elif "{{ source_type }}".lower() == 'json':
+            df = pd.read_json("{{ source_path }}")
+
+        elif "{{ source_type }}".lower() == 'database':
+            # For MSSQL or other databases
+            engine = sa.create_engine("{{ source_path }}")  # e.g., mssql+pyodbc://...
+            df = pd.read_sql("SELECT * FROM {{ source_table }}", engine)
+
+        elif "{{ source_type }}".lower() == 'api':
+            # For REST APIs
+            response = requests.get("{{ source_path }}")
+            response.raise_for_status()
+            data = response.json()
+            df = pd.DataFrame(data)  # Assuming JSON array
+
         else:
-            raise ValueError(f"Unsupported source type: {source_type}")
-        
+            raise ValueError(f"Unsupported source type: {{ source_type }}")
+
         # Add ingestion metadata
-        df_with_metadata = df.withColumn("_ingestion_timestamp", current_timestamp()) \
-                            .withColumn("_source_system", "{{ source_system }}")
-        
-        # Write to Bronze layer with overwrite mode
-        df_with_metadata.write \
-            .mode("overwrite") \
-            .option("path", f"/mnt/bronze/{database}/{destination_table}") \
-            .saveAsTable(f"{database}.{destination_table}")
-        
-        print(f"Successfully ingested data to {database}.{destination_table}")
-        return True
-        
+        df["_ingestion_timestamp"] = datetime.utcnow()
+        df["_source_system"] = "{{ source_system }}"
+
+        # Yield data for dlt to load
+        yield df
+
     except Exception as e:
-        print(f"Error during ingestion: {str(e)}")
-        return False
+        print(f"Error during data loading: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    # Run the pipeline
+    pipeline.run(load_bronze_data())
+    print(f"Successfully loaded data to bronze.{{ destination_table }}")
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("BronzeIngestion").getOrCreate()

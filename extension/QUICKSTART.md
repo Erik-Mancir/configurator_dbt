@@ -108,7 +108,7 @@ code --install-extension dbt-configurator-1.0.0.vsix
 ## Check Your Project
 
 After generating, files appear in:
-- **Bronze scripts**: `scripts/ingest_*.py`
+- **Bronze pipelines**: `bronze/pipelines/*_pipeline.py`
 - **Silver models**: `models/silver/*.sql` + YAML
 - **Gold models**: `models/gold/*.sql` + YAML
 
@@ -164,10 +164,9 @@ Your VS Code Window
   │  └─ Layer tabs (Bronze/Silver/Gold)
   └─ File Explorer
      └─ Your DBT Project
-        ├─ models/bronze/
+        ├─ bronze/pipelines/
         ├─ models/silver/
         ├─ models/gold/
-        ├─ scripts/
         └─ dbt_project.yml
 ```
 
@@ -175,21 +174,27 @@ Your VS Code Window
 
 ### Bronze Layer
 ```python
-# Generated ingest script
-from pyspark.sql import SparkSession
+# Generated dlt pipeline
+import dlt
+from dlt.destinations import bigquery
+import pandas as pd
 from datetime import datetime
 
-spark = SparkSession.builder.appName("BronzeIngest").getOrCreate()
+pipeline = dlt.pipeline(
+    pipeline_name="bronze_pipeline",
+    destination=bigquery(),
+    dataset_name="bronze"
+)
 
-# Read from source
-df = spark.read...
+@dlt.resource(name="raw_customers", write_disposition="replace")
+def load_customers():
+    # Load from CSV
+    df = pd.read_csv("/data/customers.csv")
+    df["_ingestion_timestamp"] = datetime.utcnow()
+    df["_source_system"] = "ERP"
+    yield df
 
-# Add metadata
-df = df.withColumn("_ingestion_timestamp", lit(datetime.now()))
-df = df.withColumn("_source_system", lit("ERP"))
-
-# Write to bronze
-df.write...
+pipeline.run(load_customers())
 ```
 
 ### Silver Layer

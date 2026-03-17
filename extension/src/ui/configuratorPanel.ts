@@ -3,244 +3,245 @@ import * as path from 'path';
 import { DbtProjectManager } from '../dbtProjectManager';
 
 export class ConfiguratorPanel {
-    public static readonly viewType = 'dbtConfiguratorView';
-    private readonly _panel: vscode.WebviewPanel;
-    private readonly _extensionUri: vscode.Uri;
-    private _disposables: vscode.Disposable[] = [];
-    private currentLayer: string = 'bronze';
-    private dbtProjectManager: DbtProjectManager;
+  public static readonly viewType = 'dbtConfiguratorView';
+  private readonly _panel: vscode.WebviewPanel;
+  private readonly _extensionUri: vscode.Uri;
+  private _disposables: vscode.Disposable[] = [];
+  private currentLayer: string = 'bronze';
+  private dbtProjectManager: DbtProjectManager;
 
-    public static createOrShow(
-        extensionUri: vscode.Uri,
-        dbtProjectManager: DbtProjectManager
-    ): ConfiguratorPanel {
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
+  public static createOrShow(
+    extensionUri: vscode.Uri,
+    dbtProjectManager: DbtProjectManager
+  ): ConfiguratorPanel {
+    const column = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
 
-        // If we already have a panel, show it
-        // For simplicity, we'll create a new one each time
-        const panel = vscode.window.createWebviewPanel(
-            ConfiguratorPanel.viewType,
-            'DBT Configurator',
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true,
-                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
-            }
-        );
+    // If we already have a panel, show it
+    // For simplicity, we'll create a new one each time
+    const panel = vscode.window.createWebviewPanel(
+      ConfiguratorPanel.viewType,
+      'DBT Configurator',
+      column || vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
+      }
+    );
 
-        return new ConfiguratorPanel(panel, extensionUri, dbtProjectManager);
+    return new ConfiguratorPanel(panel, extensionUri, dbtProjectManager);
+  }
+
+  private constructor(
+    panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
+    dbtProjectManager: DbtProjectManager
+  ) {
+    this._panel = panel;
+    this._extensionUri = extensionUri;
+    this.dbtProjectManager = dbtProjectManager;
+
+    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    this._panel.webview.onDidReceiveMessage(
+      (message) => this._handleMessage(message),
+      null,
+      this._disposables
+    );
+
+    this._update();
+  }
+
+  public show(): void {
+    this._panel.reveal(vscode.ViewColumn.One);
+  }
+
+  public reveal(): void {
+    this._panel.reveal();
+  }
+
+  public dispose(): void {
+    this._panel.dispose();
+    while (this._disposables.length) {
+      const x = this._disposables.pop();
+      if (x) {
+        x.dispose();
+      }
     }
+  }
 
-    private constructor(
-        panel: vscode.WebviewPanel,
-        extensionUri: vscode.Uri,
-        dbtProjectManager: DbtProjectManager
-    ) {
-        this._panel = panel;
-        this._extensionUri = extensionUri;
-        this.dbtProjectManager = dbtProjectManager;
+  public showLayer(layer: string): void {
+    this.currentLayer = layer;
+    this._update();
+  }
 
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-        this._panel.webview.onDidReceiveMessage(
-            (message) => this._handleMessage(message),
-            null,
-            this._disposables
-        );
+  public updateProjectInfo(): void {
+    this._update();
+  }
 
-        this._update();
+  private async _handleMessage(message: any): Promise<void> {
+    switch (message.command) {
+      case 'selectProject':
+        vscode.commands.executeCommand('dbtConfigurator.selectDbtProject');
+        break;
+
+      case 'generateBronze':
+        await this._generateBronze(message);
+        break;
+
+      case 'generateSilver':
+        await this._generateSilver(message);
+        break;
+
+      case 'generateGold':
+        await this._generateGold(message);
+        break;
+
+      case 'openFolder':
+        await this._openFolderInExplorer(message.folderPath);
+        break;
     }
+  }
 
-    public show(): void {
-        this._panel.reveal(vscode.ViewColumn.One);
+  private async _generateBronze(data: any): Promise<void> {
+    try {
+      const projectPath = this.dbtProjectManager.getProjectPath();
+      if (!projectPath) {
+        vscode.window.showErrorMessage('No DBT project selected');
+        return;
+      }
+
+      // This corresponds to the original Streamlit generate_bronze_ingest
+      const scriptName = `${data.destinationTable}_pipeline.py`;
+      const pythonModule = require('../../../utils/dbt_generator');
+
+      const scriptContent = pythonModule.generate_bronze_ingest(
+        data.sourceSystem,
+        data.sourceType,
+        data.sourcePath,
+        data.sourceTable,
+        data.destinationTable,
+        `${data.destinationTable}_pipeline`
+      );
+
+      const savedPath = this.dbtProjectManager.saveScript(scriptName, scriptContent);
+
+      vscode.window.showInformationMessage(
+        `✅ Bronze ingestion script saved: ${path.basename(savedPath)}`
+      );
+
+      // Open the file in editor
+      const doc = await vscode.workspace.openTextDocument(savedPath);
+      await vscode.window.showTextDocument(doc);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error generating Bronze layer: ${error}`);
     }
+  }
 
-    public reveal(): void {
-        this._panel.reveal();
+  private async _generateSilver(data: any): Promise<void> {
+    try {
+      const projectPath = this.dbtProjectManager.getProjectPath();
+      if (!projectPath) {
+        vscode.window.showErrorMessage('No DBT project selected');
+        return;
+      }
+
+      // Use Python backend to generate content
+      const pythonModule = require('../../../utils/dbt_generator');
+
+      const sqlContent = pythonModule.generate_dbt_model(
+        data.sourceSchema,
+        data.sourceTable,
+        data.resultTable,
+        'silver'
+      );
+
+      const sourcesYml = pythonModule.generate_sources_yml(
+        data.sourceSchema,
+        data.sourceTable,
+        data.resultTable
+      );
+
+      const schemaYml = pythonModule.generate_schema_yml(
+        data.resultTable,
+        'silver'
+      );
+
+      // Save files
+      const sqlPath = this.dbtProjectManager.saveModel('silver', data.resultTable, sqlContent);
+      this.dbtProjectManager.updateSourcesYml('silver', sourcesYml);
+      this.dbtProjectManager.updateSchemaYml('silver', schemaYml);
+
+      vscode.window.showInformationMessage(
+        `✅ Silver model created: models/silver/${data.resultTable}.sql`
+      );
+
+      // Open the SQL file
+      const doc = await vscode.workspace.openTextDocument(sqlPath);
+      await vscode.window.showTextDocument(doc);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error generating Silver layer: ${error}`);
     }
+  }
 
-    public dispose(): void {
-        this._panel.dispose();
-        while (this._disposables.length) {
-            const x = this._disposables.pop();
-            if (x) {
-                x.dispose();
-            }
-        }
+  private async _generateGold(data: any): Promise<void> {
+    try {
+      const projectPath = this.dbtProjectManager.getProjectPath();
+      if (!projectPath) {
+        vscode.window.showErrorMessage('No DBT project selected');
+        return;
+      }
+
+      // Use Python backend
+      const pythonModule = require('../../../utils/dbt_generator');
+
+      const sqlContent = pythonModule.generate_dbt_model(
+        data.sourceSchema,
+        data.sourceTable,
+        data.resultTable,
+        'gold'
+      );
+
+      const schemaYml = pythonModule.generate_schema_yml(
+        data.resultTable,
+        'gold'
+      );
+
+      // Save files
+      const sqlPath = this.dbtProjectManager.saveModel('gold', data.resultTable, sqlContent);
+      this.dbtProjectManager.updateSchemaYml('gold', schemaYml);
+
+      vscode.window.showInformationMessage(
+        `✅ Gold model created: models/gold/${data.resultTable}.sql`
+      );
+
+      // Open the SQL file
+      const doc = await vscode.workspace.openTextDocument(sqlPath);
+      await vscode.window.showTextDocument(doc);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error generating Gold layer: ${error}`);
     }
+  }
 
-    public showLayer(layer: string): void {
-        this.currentLayer = layer;
-        this._update();
+  private async _openFolderInExplorer(folderPath: string): Promise<void> {
+    try {
+      const uri = vscode.Uri.file(folderPath);
+      await vscode.commands.executeCommand('revealFileInOS', uri);
+    } catch (error) {
+      vscode.window.showErrorMessage('Could not open folder');
     }
+  }
 
-    public updateProjectInfo(): void {
-        this._update();
-    }
+  private _update(): void {
+    this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
+  }
 
-    private async _handleMessage(message: any): Promise<void> {
-        switch (message.command) {
-            case 'selectProject':
-                vscode.commands.executeCommand('dbtConfigurator.selectDbtProject');
-                break;
+  private _getHtmlForWebview(webview: vscode.Webview): string {
+    const projectInfo = this.dbtProjectManager.getProjectInfo();
+    const projectPath = this.dbtProjectManager.getProjectPath();
 
-            case 'generateBronze':
-                await this._generateBronze(message);
-                break;
-
-            case 'generateSilver':
-                await this._generateSilver(message);
-                break;
-
-            case 'generateGold':
-                await this._generateGold(message);
-                break;
-
-            case 'openFolder':
-                await this._openFolderInExplorer(message.folderPath);
-                break;
-        }
-    }
-
-    private async _generateBronze(data: any): Promise<void> {
-        try {
-            const projectPath = this.dbtProjectManager.getProjectPath();
-            if (!projectPath) {
-                vscode.window.showErrorMessage('No DBT project selected');
-                return;
-            }
-
-            // This corresponds to the original Streamlit generate_bronze_ingest
-            const scriptName = `ingest_${data.destinationTable}.py`;
-            const pythonModule = require('../../../utils/dbt_generator');
-
-            const scriptContent = pythonModule.generate_bronze_ingest(
-                data.sourceSystem,
-                data.sourceType,
-                data.sourcePath,
-                data.sourceTable,
-                data.destinationTable
-            );
-
-            const savedPath = this.dbtProjectManager.saveScript(scriptName, scriptContent);
-
-            vscode.window.showInformationMessage(
-                `✅ Bronze ingestion script saved: ${path.basename(savedPath)}`
-            );
-
-            // Open the file in editor
-            const doc = await vscode.workspace.openTextDocument(savedPath);
-            await vscode.window.showTextDocument(doc);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Error generating Bronze layer: ${error}`);
-        }
-    }
-
-    private async _generateSilver(data: any): Promise<void> {
-        try {
-            const projectPath = this.dbtProjectManager.getProjectPath();
-            if (!projectPath) {
-                vscode.window.showErrorMessage('No DBT project selected');
-                return;
-            }
-
-            // Use Python backend to generate content
-            const pythonModule = require('../../../utils/dbt_generator');
-
-            const sqlContent = pythonModule.generate_dbt_model(
-                data.sourceSchema,
-                data.sourceTable,
-                data.resultTable,
-                'silver'
-            );
-
-            const sourcesYml = pythonModule.generate_sources_yml(
-                data.sourceSchema,
-                data.sourceTable,
-                data.resultTable
-            );
-
-            const schemaYml = pythonModule.generate_schema_yml(
-                data.resultTable,
-                'silver'
-            );
-
-            // Save files
-            const sqlPath = this.dbtProjectManager.saveModel('silver', data.resultTable, sqlContent);
-            this.dbtProjectManager.updateSourcesYml('silver', sourcesYml);
-            this.dbtProjectManager.updateSchemaYml('silver', schemaYml);
-
-            vscode.window.showInformationMessage(
-                `✅ Silver model created: models/silver/${data.resultTable}.sql`
-            );
-
-            // Open the SQL file
-            const doc = await vscode.workspace.openTextDocument(sqlPath);
-            await vscode.window.showTextDocument(doc);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Error generating Silver layer: ${error}`);
-        }
-    }
-
-    private async _generateGold(data: any): Promise<void> {
-        try {
-            const projectPath = this.dbtProjectManager.getProjectPath();
-            if (!projectPath) {
-                vscode.window.showErrorMessage('No DBT project selected');
-                return;
-            }
-
-            // Use Python backend
-            const pythonModule = require('../../../utils/dbt_generator');
-
-            const sqlContent = pythonModule.generate_dbt_model(
-                data.sourceSchema,
-                data.sourceTable,
-                data.resultTable,
-                'gold'
-            );
-
-            const schemaYml = pythonModule.generate_schema_yml(
-                data.resultTable,
-                'gold'
-            );
-
-            // Save files
-            const sqlPath = this.dbtProjectManager.saveModel('gold', data.resultTable, sqlContent);
-            this.dbtProjectManager.updateSchemaYml('gold', schemaYml);
-
-            vscode.window.showInformationMessage(
-                `✅ Gold model created: models/gold/${data.resultTable}.sql`
-            );
-
-            // Open the SQL file
-            const doc = await vscode.workspace.openTextDocument(sqlPath);
-            await vscode.window.showTextDocument(doc);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Error generating Gold layer: ${error}`);
-        }
-    }
-
-    private async _openFolderInExplorer(folderPath: string): Promise<void> {
-        try {
-            const uri = vscode.Uri.file(folderPath);
-            await vscode.commands.executeCommand('revealFileInOS', uri);
-        } catch (error) {
-            vscode.window.showErrorMessage('Could not open folder');
-        }
-    }
-
-    private _update(): void {
-        this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
-    }
-
-    private _getHtmlForWebview(webview: vscode.Webview): string {
-        const projectInfo = this.dbtProjectManager.getProjectInfo();
-        const projectPath = this.dbtProjectManager.getProjectPath();
-
-        return `
+    return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -473,16 +474,16 @@ export class ConfiguratorPanel {
             </div>
             <div>
               ${projectInfo
-                ? `
+        ? `
                 <div class="project-name">${projectInfo.name}</div>
                 <div class="help-text">${projectInfo.path}</div>
                 ${projectInfo.models.length > 0
-                    ? `<div class="help-text" style="margin-top: 8px;">Layers: ${projectInfo.models.join(', ')}</div>`
-                    : ''
-                }
+          ? `<div class="help-text" style="margin-top: 8px;">Layers: ${projectInfo.models.join(', ')}</div>`
+          : ''
+        }
               `
-                : '<div class="no-project">No DBT project selected</div>'
-            }
+        : '<div class="no-project">No DBT project selected</div>'
+      }
             </div>
           </div>
           
@@ -673,5 +674,5 @@ export class ConfiguratorPanel {
       </body>
       </html>
     `;
-    }
+  }
 }

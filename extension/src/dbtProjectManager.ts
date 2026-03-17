@@ -156,7 +156,7 @@ export class DbtProjectManager {
             throw new Error('No DBT project selected');
         }
 
-        const scriptsDir = path.join(this.projectPath, 'scripts');
+        const scriptsDir = path.join(this.projectPath, 'bronze', 'pipelines');
         if (!fs.existsSync(scriptsDir)) {
             fs.mkdirSync(scriptsDir, { recursive: true });
         }

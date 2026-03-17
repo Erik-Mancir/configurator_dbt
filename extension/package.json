@@ -1,7 +1,7 @@
 {
     "name": "dbt-configurator",
     "displayName": "DBT Medallion Configurator",
-    "description": "Configure and generate ELT pipeline components across Bronze, Silver, and Gold layers using DBT",
+    "description": "Configure and generate ELT pipeline components across Bronze, Silver, and Gold layers using dlt and DBT",
     "version": "1.0.0",
     "author": "Data Engineering Team",
     "publisher": "your-org",
@@ -30,7 +30,7 @@
             },
             {
                 "command": "dbtConfigurator.openBronzeConfigurator",
-                "title": "DBT Configurator: Configure Bronze Layer (Ingestion)"
+                "title": "DBT Configurator: Configure Bronze Layer (dlt Ingestion)"
             },
             {
                 "command": "dbtConfigurator.openSilverConfigurator",

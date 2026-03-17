@@ -84,19 +84,20 @@ def generate_schema_yml(result_table_name, layer):
 
     return yaml_content
 
-def generate_bronze_ingest(source_system, source_type, source_path, source_table, destination_table):
+def generate_bronze_ingest(source_system, source_type, source_path, source_table, destination_table, pipeline_name="bronze_pipeline"):
     """
-    Generate a PySpark ingestion script for Bronze layer.
+    Generate a dlt ingestion pipeline for Bronze layer.
 
     Args:
         source_system (str): Name of the source system (e.g., 'ERP', 'CRM').
-        source_type (str): Type of source ('csv', 'parquet', 'database').
+        source_type (str): Type of source ('csv', 'parquet', 'json', 'database', 'api').
         source_path (str): Path or connection string to the source.
-        source_table (str): Name of the source table.
+        source_table (str): Name of the source table (for database sources).
         destination_table (str): Name of the destination table in Bronze.
+        pipeline_name (str): Name of the dlt pipeline.
 
     Returns:
-        str: The generated PySpark ingestion script.
+        str: The generated dlt ingestion pipeline script.
     """
     # Set up Jinja2 environment
     template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
@@ -109,7 +110,8 @@ def generate_bronze_ingest(source_system, source_type, source_path, source_table
         source_type=source_type,
         source_path=source_path,
         source_table=source_table,
-        destination_table=destination_table
+        destination_table=destination_table,
+        pipeline_name=pipeline_name
     )
 
     return script_content

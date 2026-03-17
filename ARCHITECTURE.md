@@ -10,7 +10,7 @@ This configurator implements the **Medallion Architecture** (also known as the D
 │         (Databases, APIs, Files, Event Streams, etc.)         │
 └────────────────────┬─────────────────────────────────────────┘
                      │
-                     │ PySpark Ingestion
+                     │ dlt Ingestion
                      ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ BRONZE LAYER (Raw Layer)                                     │
@@ -19,7 +19,7 @@ This configurator implements the **Medallion Architecture** (also known as the D
 │ ├─ Single source of truth for source data                    │
 │ └─ Example: raw_customers, raw_orders                        │
 │                                                              │
-│ Technology: PySpark with ingestion metadata tracking         │
+│ Technology: dlt with BigQuery destination and metadata tracking │
 └────────────────────┬─────────────────────────────────────────┘
                      │
                      │ DBT Transformation
@@ -63,19 +63,19 @@ This configurator implements the **Medallion Architecture** (also known as the D
 - Preserves original data quality and structure
 - Single point of truth for source data
 - Includes ingestion metadata (timestamp, source system)
-- Optimized for rapid ingestion
+- Optimized for rapid ingestion into BigQuery
 
-**PySpark Ingestion Template**:
+**dlt Ingestion Template**:
 ```python
 # The template supports multiple source types:
-# - CSV files
-# - Parquet files
-# - Database connections (JDBC)
-# - APIs (can be extended)
+# - CSV, Parquet, JSON files
+# - Database connections (e.g., MSSQL via SQLAlchemy)
+# - APIs (REST endpoints)
 
-# Generated scripts automatically add:
+# Generated pipelines automatically add:
 # - _ingestion_timestamp: When data was loaded
 # - _source_system: Which system it came from
+# Plus dlt's built-in metadata (_dlt_load_id, _dlt_id)
 ```
 
 ### Silver Layer (Cleansed/Standardized)

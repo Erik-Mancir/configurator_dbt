@@ -1,6 +1,6 @@
 # DBT Medallion Configurator - VS Code Extension
 
-A VS Code extension for configuring and generating ELT pipeline components across Bronze, Silver, and Gold layers using PySpark and DBT.
+A VS Code extension for configuring and generating ELT pipeline components across Bronze, Silver, and Gold layers using dlt and DBT.
 
 ## Key Advantages Over Streamlit Version
 
@@ -81,16 +81,16 @@ The extension will validate that `dbt_project.yml` exists.
 
 ### 3. Configure Layers
 
-#### Bronze Layer (PySpark Ingestion)
+#### Bronze Layer (dlt Ingestion)
 1. Click the **🥉 Bronze** tab
 2. Fill in source details:
    - Source System (ERP, CRM, API, etc.)
-   - Source Type (CSV, Parquet, Database, API)
+   - Source Type (CSV, Parquet, JSON, Database, API)
    - Source Path (file path or connection string)
-   - Source Table name
+   - Source Table name (for databases)
    - Destination Table (Bronze layer name)
-3. Click "Generate Bronze Script"
-4. Generated script saves to: `scripts/ingest_<table>.py`
+3. Click "Generate Bronze Pipeline"
+4. Generated pipeline saves to: `bronze/pipelines/<table>_pipeline.py`
 
 #### Silver Layer (DBT Cleansing)
 1. Click the **🥈 Silver** tab
@@ -171,7 +171,7 @@ VS Code Extension
 
 ### File Management
 - ✅ Auto-creates layer directories (`models/bronze`, `models/silver`, `models/gold`)
-- ✅ Auto-creates `scripts/` directory for Bronze ingestion
+- ✅ Auto-creates `bronze/pipelines/` directory for dlt ingestion
 - ✅ Smart YAML merging (appends to existing `sources.yml`/`schema.yml`)
 - ✅ Non-destructive updates (never overwrites existing configurations)
 

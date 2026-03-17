@@ -109,9 +109,9 @@ class ConfiguratorPanel {
                 return;
             }
             // This corresponds to the original Streamlit generate_bronze_ingest
-            const scriptName = `ingest_${data.destinationTable}.py`;
+            const scriptName = `${data.destinationTable}_pipeline.py`;
             const pythonModule = require('../../../utils/dbt_generator');
-            const scriptContent = pythonModule.generate_bronze_ingest(data.sourceSystem, data.sourceType, data.sourcePath, data.sourceTable, data.destinationTable);
+            const scriptContent = pythonModule.generate_bronze_ingest(data.sourceSystem, data.sourceType, data.sourcePath, data.sourceTable, data.destinationTable, `${data.destinationTable}_pipeline`);
             const savedPath = this.dbtProjectManager.saveScript(scriptName, scriptContent);
             vscode.window.showInformationMessage(`✅ Bronze ingestion script saved: ${path.basename(savedPath)}`);
             // Open the file in editor
