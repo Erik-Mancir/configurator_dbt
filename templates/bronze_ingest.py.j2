@@ -61,13 +61,3 @@ if __name__ == "__main__":
     # Run the pipeline
     pipeline.run(load_bronze_data())
     print(f"Successfully loaded data to bronze.{{ destination_table }}")
-
-if __name__ == "__main__":
-    spark = SparkSession.builder.appName("BronzeIngestion").getOrCreate()
-    
-    ingest_to_bronze(
-        spark=spark,
-        source_type='{{ source_type }}',
-        source_path='{{ source_path }}',
-        destination_table='{{ destination_table }}'
-    )
